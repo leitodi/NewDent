@@ -1,27 +1,27 @@
 services:
-  - type: web_service
+  - type: web
+    runtime: node
     name: new-dent-backend
-    env: node
+    rootDir: backend
     plan: starter
     region: oregon
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && npm run start
+    buildCommand: npm install
+    startCommand: npm run start
+    healthCheckPath: /api/health
     envVars:
       - key: MONGO_URI
-        fromSecret: MONGO_URI
+        sync: false
       - key: JWT_SECRET
-        fromSecret: JWT_SECRET
+        generateValue: true
       - key: CLIENT_ORIGIN
-        value: https://new-dent-frontend.onrender.com
-      - key: PORT
-        value: "4000"
-  - type: static_site
+        value: https://newdent.onrender.com,https://new-dent-frontend.onrender.com,http://localhost:5173
+
+  - type: web
+    runtime: static
     name: new-dent-frontend
-    env: node
-    plan: free
-    region: oregon
-    buildCommand: cd frontend && npm install && npm run build
-    publishPath: frontend/dist
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
         value: https://new-dent-backend.onrender.com/api

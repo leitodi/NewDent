@@ -1,20 +1,99 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import './styles.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-
 const today = new Date();
 
-const buildDays = () => {
+const buildDays = (monthDate) => {
   const days = [];
-  const year = today.getFullYear();
-  const month = today.getMonth();
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  for (let i = 1; i <= lastDay.getDate(); i += 1) {
-    days.push(new Date(year, month, i));
+  const startWeekDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+  const totalCells = 42;
+
+  for (let i = 0; i < totalCells; i += 1) {
+    const dayNumber = i - startWeekDay + 1;
+    if (dayNumber <= 0 || dayNumber > lastDay.getDate()) {
+      days.push(null);
+    } else {
+      days.push(new Date(year, month, dayNumber));
+    }
   }
   return days;
+};
+
+const modules = [
+  { key: 'agenda', label: 'Agenda' },
+  { key: 'clientes', label: 'Clientes' },
+  { key: 'caja', label: 'Caja' },
+];
+
+function ToothIcon() {
+  return (
+    <svg viewBox="0 0 64 64" className="tooth-icon" aria-hidden="true">
+      <path d="M32 6c-8 0-14 5-16 12-2 8 0 15 0 23 0 5 2 11 4 16 2 4 6 6 12 6s10-2 12-6c2-5 4-11 4-16 0-8 2-15 0-23-2-7-8-12-16-12z" fill="#fff" stroke="#1f5a3f" strokeWidth="3" />
+      <path d="M24 20c1-2 3-4 8-4s7 2 8 4" stroke="#1f5a3f" strokeWidth="2" fill="none" />
+      <path d="M24 28c1-1 3-2 8-2s7 1 8 2" stroke="#1f5a3f" strokeWidth="2" fill="none" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="whatsapp-icon" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12 2.2a9.8 9.8 0 0 0-8.34 14.95L2.2 21.8l4.78-1.43A9.8 9.8 0 1 0 12 2.2zm0 17.82a8.02 8.02 0 0 1-4.08-1.11l-.29-.17-2.84.85.85-2.76-.19-.29A8.02 8.02 0 1 1 12 20.02zm4.4-6.02c-.24-.12-1.4-.69-1.62-.77-.21-.08-.37-.12-.53.12-.16.24-.61.77-.75.93-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.22-.72-.64-1.2-1.44-1.34-1.68-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.53-1.28-.73-1.76-.19-.45-.38-.39-.53-.4h-.45c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.37.51.58.18 1.11.15 1.52.09.46-.07 1.4-.57 1.6-1.11.2-.55.2-1.02.14-1.11-.06-.09-.22-.14-.46-.26z"
+      />
+    </svg>
+  );
+}
+
+const formatDate = (value) => {
+  if (!value) return 'Sin fecha';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+};
+
+const normalizeWhatsAppPhone = (phone) => {
+  if (!phone) return '';
+
+  let normalized = String(phone).replace(/\D/g, '');
+  if (!normalized) return '';
+
+  if (normalized.startsWith('00')) {
+    normalized = normalized.slice(2);
+  }
+
+  if (!normalized.startsWith('54') && (normalized.length === 10 || normalized.length === 11)) {
+    normalized = `54${normalized.replace(/^0/, '')}`;
+  }
+
+  if (normalized.startsWith('54')) {
+    normalized = normalized.replace(/^54(\d{2,4})15/, '54$1');
+  }
+
+  return normalized;
+};
+
+const formatWhatsAppDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('es-AR');
+};
+
+const buildWhatsAppUrl = (appointment) => {
+  const phone = normalizeWhatsAppPhone(appointment?.client?.phone);
+  if (!phone) return '';
+
+  const appointmentDate = formatWhatsAppDate(appointment.date);
+  const clientName = appointment?.client?.firstName ? `${appointment.client.firstName}, ` : '';
+  const message = `${clientName}hoy ${appointmentDate} tenes turno a las ${appointment.time} en NEW DENT. Te esperamos!`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
 function App() {
@@ -22,16 +101,24 @@ function App() {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [clients, setClients] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [selectedModule, setSelectedModule] = useState('agenda');
+  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedClient, setSelectedClient] = useState(null);
-  const [clientForm, setClientForm] = useState({ firstName: '', lastName: '', phone: '', email: '', notes: '' });
+  const [clientForm, setClientForm] = useState({ firstName: '', lastName: '', phone: '', email: '', notes: '', images: [] });
   const [appointmentForm, setAppointmentForm] = useState({ client: '', date: today.toISOString().split('T')[0], time: '', service: '', notes: '' });
-  const [paymentForm, setPaymentForm] = useState({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '' });
+  const [paymentForm, setPaymentForm] = useState({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
   const [paymentFilter, setPaymentFilter] = useState({ start: '', end: '' });
   const [paymentList, setPaymentList] = useState([]);
   const [message, setMessage] = useState('');
 
-  const days = useMemo(buildDays, []);
+  const days = useMemo(() => buildDays(currentMonth), [currentMonth]);
+  const monthName = currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+  const weekDays = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+
+  const moveMonth = (delta) => {
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+  };
 
   useEffect(() => {
     if (token) {
@@ -108,6 +195,56 @@ function App() {
     }
   };
 
+  const saveClient = async (event) => {
+    event.preventDefault();
+    try {
+      const result = await fetch(`${API_URL}/clients`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(clientForm),
+      });
+      const data = await result.json();
+      if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
+      setClientForm({ firstName: '', lastName: '', phone: '', email: '', notes: '', images: [] });
+      fetchClients();
+      setMessage('Cliente guardado');
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const handleClientImages = async (event) => {
+    const files = Array.from(event.target.files || []);
+    const images = await Promise.all(
+      files.map((file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve({ url: reader.result, date: new Date().toISOString() });
+          };
+          reader.readAsDataURL(file);
+        })
+      )
+    );
+    setClientForm((prev) => ({ ...prev, images: [...(prev.images || []), ...images] }));
+  };
+
+  const handlePaymentImages = async (event) => {
+    const files = Array.from(event.target.files || []);
+    const images = await Promise.all(
+      files.map((file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve({ url: reader.result, date: new Date().toISOString() });
+          };
+          reader.readAsDataURL(file);
+        })
+      )
+    );
+    setPaymentForm((prev) => ({ ...prev, images: [...(prev.images || []), ...images] }));
+  };
+
   const saveAppointment = async (event) => {
     event.preventDefault();
     try {
@@ -118,7 +255,7 @@ function App() {
       });
       const data = await result.json();
       if (!result.ok) throw new Error(data.message || 'Error al guardar turno');
-      setAppointmentForm({ client: '', date: today.toISOString().split('T')[0], time: '', service: '', notes: '' });
+      setAppointmentForm({ ...appointmentForm, time: '', service: '', notes: '' });
       fetchAppointments(new Date(appointmentForm.date));
       setMessage('Turno guardado');
     } catch (error) {
@@ -137,7 +274,7 @@ function App() {
       });
       const data = await result.json();
       if (!result.ok) throw new Error(data.message || 'Error al guardar pago');
-      setPaymentForm({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '' });
+      setPaymentForm({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
       fetchPayments(paymentFilter.start, paymentFilter.end);
       setMessage('Pago guardado');
     } catch (error) {
@@ -145,28 +282,10 @@ function App() {
     }
   };
 
-  const loadClientDetails = async (client) => {
+  const loadClientDetails = (client) => {
     setSelectedClient(client);
     setAppointmentForm((prev) => ({ ...prev, client: client._id }));
     setPaymentForm((prev) => ({ ...prev, client: client._id }));
-  };
-
-  const saveClient = async (event) => {
-    event.preventDefault();
-    try {
-      const result = await fetch(`${API_URL}/clients`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(clientForm),
-      });
-      const data = await result.json();
-      if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
-      setClientForm({ firstName: '', lastName: '', phone: '', email: '', notes: '' });
-      fetchClients();
-      setMessage('Cliente guardado');
-    } catch (error) {
-      setMessage(error.message);
-    }
   };
 
   const exportPayments = async () => {
@@ -180,7 +299,6 @@ function App() {
     const response = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${token}` },
     });
-
     if (!response.ok) {
       const data = await response.json();
       setMessage(data.message || 'Error al exportar');
@@ -196,14 +314,19 @@ function App() {
     setMessage('Exportación descargada');
   };
 
+  const clientImages = selectedClient?.images || [];
+
   if (!token) {
     return (
-      <div className="layout">
-        <header className="header">
-          <div className="brand">NEW DENT</div>
+      <div className="layout login-screen">
+        <header className="header auth-header">
+          <div className="brand auth-brand">
+            <ToothIcon />
+            <span>NEW DENT</span>
+          </div>
           <p>Agenda de turnos para clínica dental</p>
         </header>
-        <main className="panel">
+        <main className="panel centered-panel">
           <h2>Iniciar sesión</h2>
           <form className="form" onSubmit={login}>
             <label>
@@ -233,190 +356,441 @@ function App() {
   }
 
   return (
-    <div className="layout">
-      <header className="header">
-        <div>
-          <div className="brand">NEW DENT</div>
-          <p>Agenda de turnos y caja</p>
+    <div className="app-layout">
+      <header className="topbar">
+        <div className="brand-panel">
+          <div className="brand-large">
+            <ToothIcon />
+            <span>NEW DENT</span>
+          </div>
+          <p className="brand-subtitle">Agenda, clientes y caja en un solo lugar</p>
         </div>
-        <button className="button secondary" onClick={logout}>Cerrar sesión</button>
-      </header>
 
-      <main className="grid">
-        <section className="card">
-          <h3>Calendario</h3>
-          <div className="calendar">
-            {days.map((day) => (
+        <div className="top-controls">
+          <button className="button logout-button" onClick={logout}>Cerrar sesión</button>
+          <nav className="module-nav">
+            {modules.map((module) => (
               <button
-                key={day.toISOString()}
+                key={module.key}
                 type="button"
-                className={day.getDate() === selectedDate.getDate() ? 'day selected' : 'day'}
-                onClick={() => {
-                  setSelectedDate(day);
-                  fetchAppointments(day);
-                }}
+                className={module.key === selectedModule ? 'module-button active' : 'module-button'}
+                onClick={() => setSelectedModule(module.key)}
               >
-                {day.getDate()}
+                {module.label}
               </button>
             ))}
-          </div>
-          <div>
-            <h4>Turnos del {selectedDate.toLocaleDateString()}</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Hora</th>
-                </tr>
-              </thead>
-              <tbody>
-                {appointments.length > 0 ? (
-                  appointments.map((item) => (
-                    <tr key={item._id}>
-                      <td>{item.client ? `${item.client.firstName} ${item.client.lastName}` : 'Sin cliente'}</td>
-                      <td>{item.time}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="2">No hay turnos</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+          </nav>
+        </div>
+      </header>
 
-        <section className="card">
-          <h3>Clientes</h3>
-          <table className="fullwidth">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Teléfono</th>
-                <th>Ver</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((client) => (
-                <tr key={client._id}>
-                  <td>{client.firstName} {client.lastName}</td>
-                  <td>{client.phone}</td>
-                  <td>
-                    <button className="button small" type="button" onClick={() => loadClientDetails(client)}>
-                      Abrir
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {selectedClient && (
-            <div className="client-card">
-              <h4>Detalles de {selectedClient.firstName} {selectedClient.lastName}</h4>
-              <p>Teléfono: {selectedClient.phone}</p>
-              <p>Email: {selectedClient.email || 'No registrado'}</p>
-              <p>Notas: {selectedClient.notes || 'Sin notas'}</p>
-              <div className="images-grid">
-                {selectedClient.images && selectedClient.images.length > 0 ? (
-                  selectedClient.images.map((src, index) => (
-                    <img key={index} src={src} alt={`Trabajo ${index + 1}`} />
-                  ))
-                ) : (
-                  <p>Sin imágenes cargadas</p>
-                )}
+      <main className="content">
+        <div className="top-header">
+          <div>
+            <h1>{modules.find((mod) => mod.key === selectedModule)?.label}</h1>
+          </div>
+          <div className="status-card">
+            <div className="status-item">
+              <span>{clients.length}</span>
+              <small>Clientes</small>
+            </div>
+            <div className="status-item">
+              <span>{appointments.length}</span>
+              <small>Turnos</small>
+            </div>
+          </div>
+        </div>
+
+        {selectedModule === 'agenda' && (
+          <section className="module-card">
+            <div className="module-headline">
+              <div>
+                <p>Selecciona un día para ver y crear turnos.</p>
               </div>
             </div>
-          )}
-        </section>
+            <div className="agenda-content">
+              <div className="calendar">
+                <div className="calendar-header">
+                  <button className="month-nav" type="button" onClick={() => moveMonth(-1)}>&lt;</button>
+                  <span>{monthName}</span>
+                  <button className="month-nav" type="button" onClick={() => moveMonth(1)}>&gt;</button>
+                </div>
+                <div className="calendar-weekday-row">
+                  {weekDays.map((weekday) => (
+                    <div key={weekday} className="weekday-cell">{weekday}</div>
+                  ))}
+                </div>
+                <div className="calendar-days">
+                  {days.map((day, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className={day && day.toDateString() === selectedDate.toDateString() ? 'day selected' : 'day blank'}
+                      disabled={!day}
+                      onClick={() => {
+                        if (!day) return;
+                        setSelectedDate(day);
+                        fetchAppointments(day);
+                      }}
+                    >
+                      {day ? day.getDate() : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="agenda-panel">
+                <h4>Turnos del {selectedDate.toLocaleDateString()}</h4>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Cliente</th>
+                        <th>Celular</th>
+                        <th>Hora</th>
+                        <th>Servicio</th>
+                        <th>WhatsApp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {appointments.length > 0 ? (
+                        appointments.map((item) => {
+                          const whatsappUrl = buildWhatsAppUrl(item);
 
-        <section className="card">
-          <h3>Agregar cliente</h3>
-          <form className="form" onSubmit={saveClient}>
-            <label>
-              Nombre
-              <input
-                value={clientForm.firstName}
-                onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Apellido
-              <input
-                value={clientForm.lastName}
-                onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Teléfono
-              <input
-                value={clientForm.phone}
-                onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Email
-              <input
-                value={clientForm.email}
-                onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-              />
-            </label>
-            <label>
-              Notas
-              <textarea
-                value={clientForm.notes}
-                onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
-              />
-            </label>
-            <button className="button primary" type="submit">Guardar cliente</button>
-          </form>
-        </section>
+                          return (
+                            <tr key={item._id}>
+                              <td>{item.client ? `${item.client.firstName} ${item.client.lastName}` : 'Sin cliente'}</td>
+                              <td className="phone-cell">{item.client?.phone || '-'}</td>
+                              <td>{item.time}</td>
+                              <td>{item.service || '-'}</td>
+                              <td className="table-action-cell">
+                                {whatsappUrl ? (
+                                  <a
+                                    className="whatsapp-link"
+                                    href={whatsappUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title="Enviar recordatorio por WhatsApp"
+                                    aria-label={`Enviar WhatsApp a ${item.client?.firstName || 'cliente'}`}
+                                  >
+                                    <WhatsAppIcon />
+                                  </a>
+                                ) : (
+                                  <span className="whatsapp-link disabled" title="El cliente no tiene celular cargado">
+                                    <WhatsAppIcon />
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan="5">No hay turnos para este día</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="form-section">
+                  <h4>Crear turno</h4>
+                  <form className="form" onSubmit={saveAppointment}>
+                    <label>
+                      Cliente
+                      <select
+                        value={appointmentForm.client}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, client: e.target.value })}
+                        required
+                      >
+                        <option value="">Seleccionar cliente</option>
+                        {clients.map((client) => (
+                          <option key={client._id} value={client._id}>
+                            {client.firstName} {client.lastName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Fecha
+                      <input
+                        type="date"
+                        value={appointmentForm.date}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, date: e.target.value })}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Hora
+                      <input
+                        type="time"
+                        value={appointmentForm.time}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, time: e.target.value })}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Servicio
+                      <input
+                        value={appointmentForm.service}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, service: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Notas
+                      <textarea
+                        value={appointmentForm.notes}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, notes: e.target.value })}
+                      />
+                    </label>
+                    <button className="button primary" type="submit">Guardar turno</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
-        <section className="card">
-          <h3>Caja y exportación</h3>
-          <label>
-            Desde
-            <input
-              type="date"
-              value={paymentFilter.start}
-              onChange={(e) => setPaymentFilter({ ...paymentFilter, start: e.target.value })}
-            />
-          </label>
-          <label>
-            Hasta
-            <input
-              type="date"
-              value={paymentFilter.end}
-              onChange={(e) => setPaymentFilter({ ...paymentFilter, end: e.target.value })}
-            />
-          </label>
-          <button className="button primary" type="button" onClick={exportPayments}>Exportar Excel</button>
-          {paymentList.length > 0 && (
-            <table className="fullwidth">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Cliente</th>
-                  <th>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentList.map((item) => (
-                  <tr key={item._id}>
-                    <td>{new Date(item.date).toLocaleDateString()}</td>
-                    <td>{item.client?.firstName} {item.client?.lastName}</td>
-                    <td>${item.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+        {selectedModule === 'clientes' && (
+          <section className="module-card">
+            <div className="module-headline">
+              <div>
+                <p>Administrá la lista de clientes y sus imágenes de tratamientos.</p>
+              </div>
+            </div>
+            <div className="clients-content">
+              <div className="form-section">
+                <h4>Nuevo cliente</h4>
+                <form className="form" onSubmit={saveClient}>
+                  <label>
+                    Nombre
+                    <input
+                      value={clientForm.firstName}
+                      onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Apellido
+                    <input
+                      value={clientForm.lastName}
+                      onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Teléfono
+                    <input
+                      value={clientForm.phone}
+                      onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Email
+                    <input
+                      value={clientForm.email}
+                      onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Notas
+                    <textarea
+                      value={clientForm.notes}
+                      onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Imágenes del cliente
+                    <input type="file" accept="image/*" multiple onChange={handleClientImages} />
+                  </label>
+                  <div className="image-preview-row">
+                    {clientForm.images.length > 0 ? (
+                      clientForm.images.map((image, index) => (
+                        <div className="image-preview" key={index}>
+                          <img src={image.url} alt={`Preview ${index + 1}`} />
+                          <span>{formatDate(image.date)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="small-note">No hay imágenes cargadas aún</p>
+                    )}
+                  </div>
+                  <button className="button primary" type="submit">Guardar cliente</button>
+                </form>
+              </div>
+              <div className="clients-list-section">
+                <h4>Lista de clientes</h4>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Ver</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clients.map((client) => (
+                        <tr key={client._id}>
+                          <td>{client.firstName} {client.lastName}</td>
+                          <td>{client.phone}</td>
+                          <td>
+                            <button className="button small" type="button" onClick={() => loadClientDetails(client)}>
+                              Abrir
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {selectedClient && (
+                <div className="client-card-large">
+                  <h4>{selectedClient.firstName} {selectedClient.lastName}</h4>
+                  <p><strong>Teléfono:</strong> {selectedClient.phone}</p>
+                  <p><strong>Email:</strong> {selectedClient.email || 'No registrado'}</p>
+                  <p><strong>Notas:</strong> {selectedClient.notes || 'Sin notas'}</p>
+                  <div className="images-grid">
+                    {clientImages.length > 0 ? (
+                      clientImages.map((image, index) => (
+                        <div className="image-card" key={index}>
+                          <img src={image.url} alt={`Trabajo ${index + 1}`} />
+                          <p>{formatDate(image.date)}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>Sin imágenes cargadas</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {selectedModule === 'caja' && (
+          <section className="module-card">
+            <div className="module-headline">
+              <div>
+                <p>Registrá pagos, subí imágenes del trabajo y exportá el detalle en Excel.</p>
+              </div>
+            </div>
+            <div className="caja-content">
+              <div className="form-section">
+                <h4>Registrar pago</h4>
+                <form className="form" onSubmit={savePayment}>
+                  <label>
+                    Cliente
+                    <select
+                      value={paymentForm.client}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, client: e.target.value })}
+                      required
+                    >
+                      <option value="">Seleccionar cliente</option>
+                      {clients.map((client) => (
+                        <option key={client._id} value={client._id}>
+                          {client.firstName} {client.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Fecha
+                    <input
+                      type="date"
+                      value={paymentForm.date}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Monto
+                    <input
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                      type="number"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Descripción
+                    <input
+                      value={paymentForm.description}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Imágenes del trabajo
+                    <input type="file" accept="image/*" multiple onChange={handlePaymentImages} />
+                  </label>
+                  <div className="image-preview-row">
+                    {paymentForm.images.length > 0 ? (
+                      paymentForm.images.map((image, index) => (
+                        <div className="image-preview" key={index}>
+                          <img src={image.url} alt={`Preview ${index + 1}`} />
+                          <span>{formatDate(image.date)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="small-note">Subí hasta 2 imágenes del trabajo del día</p>
+                    )}
+                  </div>
+                  <button className="button primary" type="submit">Guardar pago</button>
+                </form>
+              </div>
+              <div className="payments-panel">
+                <h4>Exportar pagos</h4>
+                <div className="form" style={{ gap: '10px' }}>
+                  <label>
+                    Desde
+                    <input
+                      type="date"
+                      value={paymentFilter.start}
+                      onChange={(e) => setPaymentFilter({ ...paymentFilter, start: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Hasta
+                    <input
+                      type="date"
+                      value={paymentFilter.end}
+                      onChange={(e) => setPaymentFilter({ ...paymentFilter, end: e.target.value })}
+                    />
+                  </label>
+                  <button className="button primary" type="button" onClick={exportPayments}>Exportar Excel</button>
+                </div>
+                <div className="table-scroll">
+                  {paymentList.length > 0 ? (
+                    <table className="fullwidth">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Cliente</th>
+                          <th>Monto</th>
+                          <th>Imágenes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paymentList.map((item) => (
+                          <tr key={item._id}>
+                            <td>{new Date(item.date).toLocaleDateString()}</td>
+                            <td>{item.client?.firstName} {item.client?.lastName}</td>
+                            <td>${item.amount}</td>
+                            <td>{item.images?.length || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No hay pagos en este rango</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {message && <div className="toast">{message}</div>}
       </main>
-      {message && <div className="toast">{message}</div>}
     </div>
   );
 }

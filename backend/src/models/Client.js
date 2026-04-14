@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const clientSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
@@ -6,7 +6,12 @@ const clientSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   email: { type: String },
   notes: { type: String },
-  images: [{ type: String }],
+  images: [
+    {
+      url: { type: String, required: true },
+      date: { type: Date, default: Date.now },
+    },
+  ],
   createdAt: { type: Date, default: Date.now },
 });
 
