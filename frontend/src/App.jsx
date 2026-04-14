@@ -99,7 +99,7 @@ const buildWhatsAppUrl = (appointment) => {
 
   const appointmentDate = formatWhatsAppDate(appointment.date);
   const clientName = appointment?.client?.firstName ? `${appointment.client.firstName}, ` : '';
-  const message = `${clientName}hoy ${appointmentDate} tenes turno a las ${appointment.time} en NEW DENT. Te esperamos!`;
+  const message = `Hola buen dia ${clientName}hoy ${appointmentDate} tenes turno a las ${appointment.time} en NEW DENT. Te esperamos!`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
@@ -816,7 +816,7 @@ function App() {
                   </label>
                   <label>
                     Imágenes del cliente
-                    <input type="file" accept="image/*" multiple onChange={handleClientImages} />
+                    <input type="file" accept="image/*" capture="environment" multiple onChange={handleClientImages} />
                   </label>
                   <div className="image-preview-row">
                     {clientForm.images.length > 0 ? (
@@ -880,7 +880,7 @@ function App() {
                       </label>
                       <label>
                         Imágenes
-                        <input type="file" accept="image/*" multiple onChange={handleSelectedClientImages} />
+                        <input type="file" accept="image/*" capture="environment" multiple onChange={handleSelectedClientImages} />
                       </label>
                       <div className="image-preview-row">
                         {selectedClientUpload.images.length > 0 ? (
@@ -968,7 +968,7 @@ function App() {
                   </label>
                   <label>
                     Imágenes del trabajo
-                    <input type="file" accept="image/*" multiple onChange={handlePaymentImages} />
+                    <input type="file" accept="image/*" capture="environment" multiple onChange={handlePaymentImages} />
                   </label>
                   <div className="image-preview-row">
                     {paymentForm.images.length > 0 ? (
