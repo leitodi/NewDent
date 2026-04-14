@@ -39,7 +39,17 @@ router.get('/:id', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const client = await Client.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { firstName, lastName, phone, email, notes, images } = req.body;
+    const updateData = {
+      firstName,
+      lastName,
+      phone,
+      email,
+      notes,
+      images,
+    };
+
+    const client = await Client.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!client) {
       return res.status(404).json({ message: 'Cliente no encontrado' });
     }

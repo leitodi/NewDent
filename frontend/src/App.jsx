@@ -103,6 +103,12 @@ const buildWhatsAppUrl = (appointment) => {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
+const getLocalDateValue = (value = new Date()) => {
+  const date = new Date(value);
+  const timezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
 function App() {
   const [token, setToken] = useState(localStorage.getItem('newDentToken') || '');
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -117,6 +123,7 @@ function App() {
   const [paymentForm, setPaymentForm] = useState({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
   const [paymentFilter, setPaymentFilter] = useState({ start: '', end: '' });
   const [paymentList, setPaymentList] = useState([]);
+  const [selectedClientUpload, setSelectedClientUpload] = useState({ date: getLocalDateValue(), images: [] });
   const [message, setMessage] = useState('');
   const [loadingState, setLoadingState] = useState({ active: false, text: 'Cargando...' });
   const [, setLoadingCount] = useState(0);
@@ -341,8 +348,77 @@ function App() {
 
   const loadClientDetails = (client) => {
     setSelectedClient(client);
+    setSelectedClientUpload({ date: getLocalDateValue(), images: [] });
     setAppointmentForm((prev) => ({ ...prev, client: client._id }));
     setPaymentForm((prev) => ({ ...prev, client: client._id }));
+  };
+
+  const handleSelectedClientImages = async (event) => {
+    const files = Array.from(event.target.files || []);
+    const images = await Promise.all(
+      files.map((file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve({ url: reader.result });
+          };
+          reader.readAsDataURL(file);
+        })
+      )
+    );
+
+    setSelectedClientUpload((prev) => ({ ...prev, images: [...prev.images, ...images] }));
+  };
+
+  const saveSelectedClientImages = async (event) => {
+    event.preventDefault();
+
+    if (!selectedClient?._id) {
+      setMessage('Selecciona un cliente');
+      return;
+    }
+
+    if (selectedClientUpload.images.length === 0) {
+      setMessage('Selecciona al menos una imagen');
+      return;
+    }
+
+    await runWithLoading('Guardando imágenes...', async () => {
+      try {
+        const imageDate = selectedClientUpload.date
+          ? new Date(`${selectedClientUpload.date}T12:00:00`).toISOString()
+          : new Date().toISOString();
+        const newImages = selectedClientUpload.images.map((image) => ({
+          url: image.url,
+          date: imageDate,
+        }));
+
+        const result = await fetch(`${API_URL}/clients/${selectedClient._id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            firstName: selectedClient.firstName,
+            lastName: selectedClient.lastName,
+            phone: selectedClient.phone,
+            email: selectedClient.email || '',
+            notes: selectedClient.notes || '',
+            images: [...(selectedClient.images || []), ...newImages].map((image) => ({
+              url: image.url,
+              date: image.date,
+            })),
+          }),
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data.message || 'Error al guardar imágenes');
+
+        setSelectedClient(data);
+        setClients((prev) => prev.map((client) => (client._id === data._id ? data : client)));
+        setSelectedClientUpload({ date: getLocalDateValue(), images: [] });
+        setMessage('Imágenes agregadas');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
   };
 
   const exportPayments = async () => {
@@ -709,6 +785,37 @@ function App() {
                   <p><strong>Teléfono:</strong> {selectedClient.phone}</p>
                   <p><strong>Email:</strong> {selectedClient.email || 'No registrado'}</p>
                   <p><strong>Notas:</strong> {selectedClient.notes || 'Sin notas'}</p>
+                  <div className="client-upload-panel">
+                    <h5>Agregar imágenes</h5>
+                    <form className="form" onSubmit={saveSelectedClientImages}>
+                      <label>
+                        Fecha y hora
+                        <input
+                          type="date"
+                          value={selectedClientUpload.date}
+                          onChange={(e) => setSelectedClientUpload((prev) => ({ ...prev, date: e.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Imágenes
+                        <input type="file" accept="image/*" multiple onChange={handleSelectedClientImages} />
+                      </label>
+                      <div className="image-preview-row">
+                        {selectedClientUpload.images.length > 0 ? (
+                          selectedClientUpload.images.map((image, index) => (
+                            <div className="image-preview" key={index}>
+                              <img src={image.url} alt={`Nueva imagen ${index + 1}`} />
+                              <span>{formatDate(selectedClientUpload.date)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="small-note">Todavía no seleccionaste imágenes nuevas</p>
+                        )}
+                      </div>
+                      <button className="button primary" type="submit">Guardar imágenes</button>
+                    </form>
+                  </div>
                   <div className="images-grid">
                     {clientImages.length > 0 ? (
                       clientImages.map((image, index) => (

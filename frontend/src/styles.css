@@ -469,6 +469,20 @@ textarea {
   background: #f5fcf3;
 }
 
+.client-upload-panel {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid #d8ebd8;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.client-upload-panel h5 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  color: #1f5a3f;
+}
+
 .images-grid {
   margin-top: 14px;
   display: grid;
