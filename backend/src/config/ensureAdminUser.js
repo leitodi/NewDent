@@ -2,30 +2,43 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 
 const ensureAdminUser = async () => {
-  const adminEmail = process.env.ADMIN_EMAIL || 'ADMIN';
-  const adminName = process.env.ADMIN_NAME || 'ADMIN';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'ADMIN1234';
+  const defaultUsers = [
+    {
+      email: process.env.ADMIN_EMAIL || 'ADMIN',
+      name: process.env.ADMIN_NAME || 'ADMIN',
+      password: process.env.ADMIN_PASSWORD || 'ADMIN1234',
+      role: 'admin',
+    },
+    {
+      email: process.env.GARIBALDI_EMAIL || 'GARIBALDI',
+      name: process.env.GARIBALDI_NAME || 'GARIBALDI',
+      password: process.env.GARIBALDI_PASSWORD || 'GARIBALDI156',
+      role: 'admin',
+    },
+  ];
 
-  const hashedPassword = await bcrypt.hash(adminPassword, 10);
-  const existingUser = await User.findOne({ email: adminEmail });
+  for (const defaultUser of defaultUsers) {
+    const hashedPassword = await bcrypt.hash(defaultUser.password, 10);
+    const existingUser = await User.findOne({ email: defaultUser.email });
 
-  if (existingUser) {
-    existingUser.name = adminName;
-    existingUser.password = hashedPassword;
-    existingUser.role = 'admin';
-    await existingUser.save();
-    console.log(`Admin user updated: ${adminEmail}`);
-    return;
+    if (existingUser) {
+      existingUser.name = defaultUser.name;
+      existingUser.password = hashedPassword;
+      existingUser.role = defaultUser.role;
+      await existingUser.save();
+      console.log(`Default user updated: ${defaultUser.email}`);
+      continue;
+    }
+
+    await User.create({
+      email: defaultUser.email,
+      name: defaultUser.name,
+      password: hashedPassword,
+      role: defaultUser.role,
+    });
+
+    console.log(`Default user created: ${defaultUser.email}`);
   }
-
-  await User.create({
-    email: adminEmail,
-    name: adminName,
-    password: hashedPassword,
-    role: 'admin',
-  });
-
-  console.log(`Admin user created: ${adminEmail}`);
 };
 
 module.exports = ensureAdminUser;
