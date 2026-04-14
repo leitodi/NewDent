@@ -11,6 +11,13 @@ Agenda de turnos para clínica dental con login, calendario, clientes, caja y ex
 
 1. Copia `backend/.env.example` a `backend/.env`.
 2. Ajusta `MONGO_URI`, `JWT_SECRET` y `CLIENT_ORIGIN`.
+
+### Ejemplo de `MONGO_URI` con Mongo Atlas
+
+```env
+MONGO_URI=mongodb+srv://NewDent:<tu_password>@cluster0.03nxwzv.mongodb.net/new-dent?retryWrites=true&w=majority
+```
+
 3. En `frontend`, si quieres agregar el logo, coloca el archivo en `frontend/public/logo.png` y usa la ruta en la UI.
 
 ## Ejecutar

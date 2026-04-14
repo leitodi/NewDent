@@ -169,10 +169,6 @@ function App() {
     }
   };
 
-  const loadClientDetails = async (client) => {
-    setSelectedClient(client);
-  };
-
   const exportPayments = async () => {
     if (!paymentFilter.start || !paymentFilter.end) {
       setMessage('Selecciona rango de fechas');
