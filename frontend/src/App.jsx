@@ -47,6 +47,17 @@ function WhatsAppIcon() {
   );
 }
 
+function LoadingOverlay({ text }) {
+  return (
+    <div className="loading-overlay" role="status" aria-live="polite" aria-busy="true">
+      <div className="loading-card">
+        <div className="loading-spinner" aria-hidden="true" />
+        <p>{text}</p>
+      </div>
+    </div>
+  );
+}
+
 const formatDate = (value) => {
   if (!value) return 'Sin fecha';
   const date = new Date(value);
@@ -107,6 +118,8 @@ function App() {
   const [paymentFilter, setPaymentFilter] = useState({ start: '', end: '' });
   const [paymentList, setPaymentList] = useState([]);
   const [message, setMessage] = useState('');
+  const [loadingState, setLoadingState] = useState({ active: false, text: 'Cargando...' });
+  const [, setLoadingCount] = useState(0);
 
   const days = useMemo(() => buildDays(currentMonth), [currentMonth]);
   const monthName = currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
@@ -116,35 +129,113 @@ function App() {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   };
 
-  useEffect(() => {
-    if (token) {
-      fetchClients();
-      fetchAppointments();
-      fetchPayments();
-    }
-  }, [token]);
-
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
 
+  const runWithLoading = async (text, action) => {
+    setLoadingState({ active: true, text });
+    setLoadingCount((prev) => prev + 1);
+
+    try {
+      return await action();
+    } finally {
+      setLoadingCount((prev) => {
+        const next = Math.max(prev - 1, 0);
+        if (next === 0) {
+          setLoadingState((current) => ({ ...current, active: false }));
+        }
+        return next;
+      });
+    }
+  };
+
+  const fetchClients = async ({ showLoading = true } = {}) => {
+    const request = async () => {
+      const result = await fetch(`${API_URL}/clients`, { headers });
+      const data = await result.json();
+      setClients(data);
+      return data;
+    };
+
+    try {
+      return showLoading ? await runWithLoading('Cargando clientes...', request) : await request();
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  const fetchAppointments = async (dateParam, { showLoading = true } = {}) => {
+    const date = dateParam || selectedDate;
+    const iso = date.toISOString().split('T')[0];
+
+    const request = async () => {
+      const result = await fetch(`${API_URL}/appointments?date=${iso}`, { headers });
+      const data = await result.json();
+      setAppointments(data);
+      return data;
+    };
+
+    try {
+      return showLoading ? await runWithLoading('Cargando agenda...', request) : await request();
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  const fetchPayments = async (start, end, { showLoading = true } = {}) => {
+    const request = async () => {
+      const params = new URLSearchParams();
+      if (start) params.set('start', start);
+      if (end) params.set('end', end);
+      const url = `${API_URL}/payments${params.toString() ? `?${params}` : ''}`;
+      const result = await fetch(url, { headers });
+      const data = await result.json();
+      setPaymentList(data);
+      return data;
+    };
+
+    try {
+      return showLoading ? await runWithLoading('Cargando pagos...', request) : await request();
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      runWithLoading('Cargando datos...', async () => {
+        await Promise.all([
+          fetchClients({ showLoading: false }),
+          fetchAppointments(undefined, { showLoading: false }),
+          fetchPayments(undefined, undefined, { showLoading: false }),
+        ]);
+      });
+    }
+  }, [token]);
+
   const login = async (event) => {
     event.preventDefault();
-    try {
-      const result = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      const data = await result.json();
-      if (!result.ok) throw new Error(data.message || 'Error de login');
-      setToken(data.token);
-      localStorage.setItem('newDentToken', data.token);
-      setMessage('Bienvenido a NEW DENT');
-    } catch (error) {
-      setMessage(error.message);
-    }
+    await runWithLoading('Ingresando...', async () => {
+      try {
+        const result = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data.message || 'Error de login');
+        setToken(data.token);
+        localStorage.setItem('newDentToken', data.token);
+        setMessage('Bienvenido a NEW DENT');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
   };
 
   const logout = () => {
@@ -155,58 +246,24 @@ function App() {
     setSelectedClient(null);
   };
 
-  const fetchClients = async () => {
-    try {
-      const result = await fetch(`${API_URL}/clients`, { headers });
-      const data = await result.json();
-      setClients(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchAppointments = async (dateParam) => {
-    const date = dateParam || selectedDate;
-    const iso = date.toISOString().split('T')[0];
-    try {
-      const result = await fetch(`${API_URL}/appointments?date=${iso}`, { headers });
-      const data = await result.json();
-      setAppointments(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchPayments = async (start, end) => {
-    try {
-      const params = new URLSearchParams();
-      if (start) params.set('start', start);
-      if (end) params.set('end', end);
-      const url = `${API_URL}/payments${params.toString() ? `?${params}` : ''}`;
-      const result = await fetch(url, { headers });
-      const data = await result.json();
-      setPaymentList(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   const saveClient = async (event) => {
     event.preventDefault();
-    try {
-      const result = await fetch(`${API_URL}/clients`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(clientForm),
-      });
-      const data = await result.json();
-      if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
-      setClientForm({ firstName: '', lastName: '', phone: '', email: '', notes: '', images: [] });
-      fetchClients();
-      setMessage('Cliente guardado');
-    } catch (error) {
-      setMessage(error.message);
-    }
+    await runWithLoading('Guardando cliente...', async () => {
+      try {
+        const result = await fetch(`${API_URL}/clients`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(clientForm),
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
+        setClientForm({ firstName: '', lastName: '', phone: '', email: '', notes: '', images: [] });
+        await fetchClients({ showLoading: false });
+        setMessage('Cliente guardado');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
   };
 
   const handleClientImages = async (event) => {
@@ -243,39 +300,43 @@ function App() {
 
   const saveAppointment = async (event) => {
     event.preventDefault();
-    try {
-      const result = await fetch(`${API_URL}/appointments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(appointmentForm),
-      });
-      const data = await result.json();
-      if (!result.ok) throw new Error(data.message || 'Error al guardar turno');
-      setAppointmentForm({ ...appointmentForm, time: '', service: '', notes: '' });
-      fetchAppointments(new Date(appointmentForm.date));
-      setMessage('Turno guardado');
-    } catch (error) {
-      setMessage(error.message);
-    }
+    await runWithLoading('Guardando turno...', async () => {
+      try {
+        const result = await fetch(`${API_URL}/appointments`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(appointmentForm),
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data.message || 'Error al guardar turno');
+        setAppointmentForm({ ...appointmentForm, time: '', service: '', notes: '' });
+        await fetchAppointments(new Date(appointmentForm.date), { showLoading: false });
+        setMessage('Turno guardado');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
   };
 
   const savePayment = async (event) => {
     event.preventDefault();
-    try {
-      const body = { ...paymentForm, amount: Number(paymentForm.amount) };
-      const result = await fetch(`${API_URL}/payments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
-      const data = await result.json();
-      if (!result.ok) throw new Error(data.message || 'Error al guardar pago');
-      setPaymentForm({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
-      fetchPayments(paymentFilter.start, paymentFilter.end);
-      setMessage('Pago guardado');
-    } catch (error) {
-      setMessage(error.message);
-    }
+    await runWithLoading('Guardando pago...', async () => {
+      try {
+        const body = { ...paymentForm, amount: Number(paymentForm.amount) };
+        const result = await fetch(`${API_URL}/payments`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data.message || 'Error al guardar pago');
+        setPaymentForm({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
+        await fetchPayments(paymentFilter.start, paymentFilter.end, { showLoading: false });
+        setMessage('Pago guardado');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
   };
 
   const loadClientDetails = (client) => {
@@ -289,25 +350,27 @@ function App() {
       setMessage('Selecciona rango de fechas');
       return;
     }
-    const url = new URL(`${API_URL}/payments/export`);
-    url.searchParams.set('start', paymentFilter.start);
-    url.searchParams.set('end', paymentFilter.end);
-    const response = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}` },
+    await runWithLoading('Exportando pagos...', async () => {
+      const url = new URL(`${API_URL}/payments/export`);
+      url.searchParams.set('start', paymentFilter.start);
+      url.searchParams.set('end', paymentFilter.end);
+      const response = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        setMessage(data.message || 'Error al exportar');
+        return;
+      }
+      const blob = await response.blob();
+      const fileUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = 'new-dent-pagos.xlsx';
+      link.click();
+      URL.revokeObjectURL(fileUrl);
+      setMessage('Exportación descargada');
     });
-    if (!response.ok) {
-      const data = await response.json();
-      setMessage(data.message || 'Error al exportar');
-      return;
-    }
-    const blob = await response.blob();
-    const fileUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = 'new-dent-pagos.xlsx';
-    link.click();
-    URL.revokeObjectURL(fileUrl);
-    setMessage('Exportación descargada');
   };
 
   const clientImages = selectedClient?.images || [];
@@ -315,6 +378,7 @@ function App() {
   if (!token) {
     return (
       <div className="layout login-screen">
+        {loadingState.active && <LoadingOverlay text={loadingState.text} />}
         <header className="header auth-header">
           <div className="brand auth-brand">
             <BrandLogo />
@@ -352,6 +416,7 @@ function App() {
 
   return (
     <div className="app-layout">
+      {loadingState.active && <LoadingOverlay text={loadingState.text} />}
       <header className="topbar">
         <div className="brand-panel">
           <div className="brand-large">
