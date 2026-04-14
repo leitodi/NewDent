@@ -1,0 +1,167 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, system-ui, sans-serif;
+  background: #eef7f0;
+  color: #0f2e1f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+.layout {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.brand {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1f5a3f;
+}
+
+.panel, .card {
+  background: #ffffff;
+  border: 1px solid #dbe8dc;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(15, 46, 31, 0.06);
+}
+
+.panel {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+input, textarea, select {
+  border: 1px solid #c8dbc9;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f7fcf7;
+  color: #1a3a2b;
+}
+
+textarea {
+  min-height: 90px;
+}
+
+.button {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary {
+  background: #4d9f6b;
+  color: white;
+}
+
+.secondary {
+  background: #ffffff;
+  color: #1f5a3f;
+  border: 1px solid #d2e4d3;
+}
+
+.small {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.day {
+  padding: 10px 0;
+  background: #f3faf1;
+  border: 1px solid #d7ead7;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.selected {
+  background: #4d9f6b;
+  color: #fff;
+  border-color: #3a8653;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: #edf7ec;
+}
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #e4eee3;
+}
+
+.fullwidth {
+  width: 100%;
+}
+
+.client-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #d8ebd8;
+  border-radius: 14px;
+  background: #f5fcf3;
+}
+
+.images-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+img {
+  width: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #cfe6ce;
+}
+
+.message, .toast {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #edf7ec;
+  color: #1f5a3f;
+}
