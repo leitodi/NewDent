@@ -26,13 +26,13 @@ const buildDays = (monthDate) => {
 
 const modules = [
   { key: 'agenda', label: 'Agenda' },
-  { key: 'clientes', label: 'Clientes' },
+  { key: 'clientes', label: 'Pacientes' },
   { key: 'caja', label: 'Caja' },
 ];
 
 function BrandLogo() {
   return (
-    <img src="/newdent-logo.jpeg" alt="Logo New Dent" className="brand-logo" />
+    <img src="/newdent-logo.jpeg" alt="Logo Odontologia Garibaldi" className="brand-logo" />
   );
 }
 
@@ -99,7 +99,7 @@ const buildWhatsAppUrl = (appointment) => {
 
   const appointmentDate = formatWhatsAppDate(appointment.date);
   const clientName = appointment?.client?.firstName ? `${appointment.client.firstName}, ` : '';
-  const message = `Hola buen dia ${clientName}hoy ${appointmentDate} tenes turno a las ${appointment.time} en NEW DENT. Te esperamos!`;
+  const message = `Hola buen dia ${clientName}hoy ${appointmentDate} tenes turno a las ${appointment.time} en ODONTOLOGIA GARIBALDI. Te esperamos!`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
@@ -290,7 +290,7 @@ function App() {
         setToken(data.token);
         sessionStorage.setItem('newDentToken', data.token);
         localStorage.removeItem('newDentToken');
-        setMessage('Bienvenido a NEW DENT');
+        setMessage('Bienvenido a ODONTOLOGIA GARIBALDI');
       } catch (error) {
         setMessage(error.message);
       }
@@ -532,7 +532,7 @@ function App() {
         <header className="header auth-header">
           <div className="brand auth-brand">
             <BrandLogo />
-            <span>NEW DENT</span>
+            <span>ODONTOLOGIA GARIBALDI</span>
           </div>
         </header>
         <main className="panel centered-panel">
@@ -571,9 +571,9 @@ function App() {
         <div className="brand-panel">
           <div className="brand-large">
             <BrandLogo />
-            <span>NEW DENT</span>
+            <span>ODONTOLOGIA GARIBALDI</span>
           </div>
-          <p className="brand-subtitle">Agenda, clientes y caja en un solo lugar</p>
+          <p className="brand-subtitle">Agenda, pacientes y caja en un solo lugar</p>
         </div>
 
         <div className="top-controls">
@@ -601,7 +601,7 @@ function App() {
           <div className="status-card">
             <div className="status-item">
               <span>{clients.length}</span>
-              <small>Clientes</small>
+              <small>Pacientes</small>
             </div>
             <div className="status-item">
               <span>{appointments.length}</span>
@@ -667,7 +667,7 @@ function App() {
 
                           return (
                             <tr key={item._id}>
-                              <td>{item.client ? `${item.client.firstName} ${item.client.lastName}` : 'Sin cliente'}</td>
+                              <td>{item.client ? `${item.client.firstName} ${item.client.lastName}` : 'Sin paciente'}</td>
                               <td className="phone-cell">{item.client?.phone || '-'}</td>
                               <td>{item.time}</td>
                               <td>{item.service || '-'}</td>
@@ -679,12 +679,12 @@ function App() {
                                     target="_blank"
                                     rel="noreferrer"
                                     title="Enviar recordatorio por WhatsApp"
-                                    aria-label={`Enviar WhatsApp a ${item.client?.firstName || 'cliente'}`}
+                                    aria-label={`Enviar WhatsApp a ${item.client?.firstName || 'paciente'}`}
                                   >
                                     <WhatsAppIcon />
                                   </a>
                                 ) : (
-                                  <span className="whatsapp-link disabled" title="El cliente no tiene celular cargado">
+                                  <span className="whatsapp-link disabled" title="El paciente no tiene celular cargado">
                                     <WhatsAppIcon />
                                   </span>
                                 )}
@@ -704,13 +704,13 @@ function App() {
                   <h4>Crear turno</h4>
                   <form className="form" onSubmit={saveAppointment}>
                     <label>
-                      Cliente
+                      Paciente
                       <select
                         value={appointmentForm.client}
                         onChange={(e) => setAppointmentForm({ ...appointmentForm, client: e.target.value })}
                         required
                       >
-                        <option value="">Seleccionar cliente</option>
+                        <option value="">Seleccionar paciente</option>
                         {clients.map((client) => (
                           <option key={client._id} value={client._id}>
                             {client.firstName} {client.lastName}
@@ -723,7 +723,7 @@ function App() {
                       type="button"
                       onClick={() => setIsAgendaClientModalOpen(true)}
                     >
-                      Cliente no existe
+                      Paciente no existe
                     </button>
                     <label>
                       Fecha
@@ -769,12 +769,12 @@ function App() {
           <section className="module-card">
             <div className="module-headline">
               <div>
-                <p>Administrá la lista de clientes y sus imágenes de tratamientos.</p>
+                <p>Administrá la lista de pacientes y sus imágenes de tratamientos.</p>
               </div>
             </div>
             <div className="clients-content">
               <div className="form-section">
-                <h4>Nuevo cliente</h4>
+                <h4>Nuevo paciente</h4>
                 <form className="form" onSubmit={saveClient}>
                   <label>
                     Nombre
@@ -815,7 +815,7 @@ function App() {
                     />
                   </label>
                   <label>
-                    Imágenes del cliente
+                    Imágenes del paciente
                     <input type="file" accept="image/*" capture="environment" multiple onChange={handleClientImages} />
                   </label>
                   <div className="image-preview-row">
@@ -830,11 +830,11 @@ function App() {
                       <p className="small-note">No hay imágenes cargadas aún</p>
                     )}
                   </div>
-                  <button className="button primary" type="submit">Guardar cliente</button>
+                  <button className="button primary" type="submit">Guardar paciente</button>
                 </form>
               </div>
               <div className="clients-list-section">
-                <h4>Lista de clientes</h4>
+                <h4>Lista de pacientes</h4>
                 <div className="table-scroll">
                   <table>
                     <thead>
@@ -870,7 +870,7 @@ function App() {
                     <h5>Agregar imágenes</h5>
                     <form className="form" onSubmit={saveSelectedClientImages}>
                       <label>
-                        Fecha y hora
+                        Fecha
                         <input
                           type="date"
                           value={selectedClientUpload.date}
@@ -927,13 +927,13 @@ function App() {
                 <h4>Registrar pago</h4>
                 <form className="form" onSubmit={savePayment}>
                   <label>
-                    Cliente
+                    Paciente
                     <select
                       value={paymentForm.client}
                       onChange={(e) => setPaymentForm({ ...paymentForm, client: e.target.value })}
                       required
                     >
-                      <option value="">Seleccionar cliente</option>
+                      <option value="">Seleccionar paciente</option>
                       {clients.map((client) => (
                         <option key={client._id} value={client._id}>
                           {client.firstName} {client.lastName}
@@ -1044,7 +1044,7 @@ function App() {
         <div className="modal-backdrop" onClick={() => setIsAgendaClientModalOpen(false)}>
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head">
-              <h3>Nuevo cliente</h3>
+              <h3>Nuevo paciente</h3>
               <button
                 className="button secondary small"
                 type="button"
@@ -1095,7 +1095,7 @@ function App() {
                   onChange={handleClientFieldChange(setAgendaClientForm, 'notes')}
                 />
               </label>
-              <button className="button primary" type="submit">Guardar cliente</button>
+              <button className="button primary" type="submit">Guardar paciente</button>
             </form>
           </div>
         </div>
