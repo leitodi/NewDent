@@ -110,7 +110,7 @@ const getLocalDateValue = (value = new Date()) => {
 };
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('newDentToken') || '');
+  const [token, setToken] = useState(sessionStorage.getItem('newDentToken') || '');
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [clients, setClients] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -135,6 +135,10 @@ function App() {
   const moveMonth = (delta) => {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   };
+
+  useEffect(() => {
+    localStorage.removeItem('newDentToken');
+  }, []);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -237,7 +241,8 @@ function App() {
         const data = await result.json();
         if (!result.ok) throw new Error(data.message || 'Error de login');
         setToken(data.token);
-        localStorage.setItem('newDentToken', data.token);
+        sessionStorage.setItem('newDentToken', data.token);
+        localStorage.removeItem('newDentToken');
         setMessage('Bienvenido a NEW DENT');
       } catch (error) {
         setMessage(error.message);
@@ -247,6 +252,7 @@ function App() {
 
   const logout = () => {
     setToken('');
+    sessionStorage.removeItem('newDentToken');
     localStorage.removeItem('newDentToken');
     setClients([]);
     setAppointments([]);
