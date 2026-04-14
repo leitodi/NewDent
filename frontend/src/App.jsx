@@ -109,6 +109,26 @@ const getLocalDateValue = (value = new Date()) => {
   return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
 };
 
+const createEmptyClientForm = () => ({
+  firstName: '',
+  lastName: '',
+  phone: '',
+  email: '',
+  notes: '',
+  images: [],
+});
+
+const uppercaseValue = (value) => String(value || '').toUpperCase();
+
+const normalizeClientPayload = (form) => ({
+  firstName: uppercaseValue(form.firstName),
+  lastName: uppercaseValue(form.lastName),
+  phone: uppercaseValue(form.phone),
+  email: uppercaseValue(form.email),
+  notes: uppercaseValue(form.notes),
+  images: form.images || [],
+});
+
 function App() {
   const [token, setToken] = useState(sessionStorage.getItem('newDentToken') || '');
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -118,7 +138,9 @@ function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedClient, setSelectedClient] = useState(null);
-  const [clientForm, setClientForm] = useState({ firstName: '', lastName: '', phone: '', email: '', notes: '', images: [] });
+  const [clientForm, setClientForm] = useState(createEmptyClientForm());
+  const [agendaClientForm, setAgendaClientForm] = useState(createEmptyClientForm());
+  const [isAgendaClientModalOpen, setIsAgendaClientModalOpen] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ client: '', date: today.toISOString().split('T')[0], time: '', service: '', notes: '' });
   const [paymentForm, setPaymentForm] = useState({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
   const [paymentFilter, setPaymentFilter] = useState({ start: '', end: '' });
@@ -160,6 +182,31 @@ function App() {
         return next;
       });
     }
+  };
+
+  const updateClientList = (nextClient) => {
+    setClients((prev) =>
+      [...prev.filter((client) => client._id !== nextClient._id), nextClient].sort((a, b) => {
+        const firstNameCompare = a.firstName.localeCompare(b.firstName);
+        if (firstNameCompare !== 0) return firstNameCompare;
+        return a.lastName.localeCompare(b.lastName);
+      })
+    );
+  };
+
+  const createClientRecord = async (formData, { loadingText = 'Guardando cliente...' } = {}) => {
+    const payload = normalizeClientPayload(formData);
+
+    const result = await fetch(`${API_URL}/clients`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const data = await result.json();
+    if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
+
+    updateClientList(data);
+    return data;
   };
 
   const fetchClients = async ({ showLoading = true } = {}) => {
@@ -263,16 +310,24 @@ function App() {
     event.preventDefault();
     await runWithLoading('Guardando cliente...', async () => {
       try {
-        const result = await fetch(`${API_URL}/clients`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(clientForm),
-        });
-        const data = await result.json();
-        if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
-        setClientForm({ firstName: '', lastName: '', phone: '', email: '', notes: '', images: [] });
-        await fetchClients({ showLoading: false });
+        await createClientRecord(clientForm);
+        setClientForm(createEmptyClientForm());
         setMessage('Cliente guardado');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
+  };
+
+  const saveAgendaClient = async (event) => {
+    event.preventDefault();
+    await runWithLoading('Guardando cliente...', async () => {
+      try {
+        const createdClient = await createClientRecord(agendaClientForm);
+        setAgendaClientForm(createEmptyClientForm());
+        setAppointmentForm((prev) => ({ ...prev, client: createdClient._id }));
+        setIsAgendaClientModalOpen(false);
+        setMessage('Cliente guardado y seleccionado');
       } catch (error) {
         setMessage(error.message);
       }
@@ -293,6 +348,12 @@ function App() {
       )
     );
     setClientForm((prev) => ({ ...prev, images: [...(prev.images || []), ...images] }));
+  };
+
+  const handleClientFieldChange = (setter, field) => (event) => {
+    const value = event.target.value;
+    const nextValue = field === 'phone' ? uppercaseValue(value) : uppercaseValue(value);
+    setter((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const handlePaymentImages = async (event) => {
@@ -318,7 +379,11 @@ function App() {
         const result = await fetch(`${API_URL}/appointments`, {
           method: 'POST',
           headers,
-          body: JSON.stringify(appointmentForm),
+          body: JSON.stringify({
+            ...appointmentForm,
+            service: uppercaseValue(appointmentForm.service),
+            notes: uppercaseValue(appointmentForm.notes),
+          }),
         });
         const data = await result.json();
         if (!result.ok) throw new Error(data.message || 'Error al guardar turno');
@@ -339,7 +404,10 @@ function App() {
         const result = await fetch(`${API_URL}/payments`, {
           method: 'POST',
           headers,
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            ...body,
+            description: uppercaseValue(paymentForm.description),
+          }),
         });
         const data = await result.json();
         if (!result.ok) throw new Error(data.message || 'Error al guardar pago');
@@ -650,6 +718,13 @@ function App() {
                         ))}
                       </select>
                     </label>
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => setIsAgendaClientModalOpen(true)}
+                    >
+                      Cliente no existe
+                    </button>
                     <label>
                       Fecha
                       <input
@@ -672,14 +747,14 @@ function App() {
                       Servicio
                       <input
                         value={appointmentForm.service}
-                        onChange={(e) => setAppointmentForm({ ...appointmentForm, service: e.target.value })}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, service: uppercaseValue(e.target.value) })}
                       />
                     </label>
                     <label>
                       Notas
                       <textarea
                         value={appointmentForm.notes}
-                        onChange={(e) => setAppointmentForm({ ...appointmentForm, notes: e.target.value })}
+                        onChange={(e) => setAppointmentForm({ ...appointmentForm, notes: uppercaseValue(e.target.value) })}
                       />
                     </label>
                     <button className="button primary" type="submit">Guardar turno</button>
@@ -705,7 +780,7 @@ function App() {
                     Nombre
                     <input
                       value={clientForm.firstName}
-                      onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
+                      onChange={handleClientFieldChange(setClientForm, 'firstName')}
                       required
                     />
                   </label>
@@ -713,7 +788,7 @@ function App() {
                     Apellido
                     <input
                       value={clientForm.lastName}
-                      onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
+                      onChange={handleClientFieldChange(setClientForm, 'lastName')}
                       required
                     />
                   </label>
@@ -721,7 +796,7 @@ function App() {
                     Teléfono
                     <input
                       value={clientForm.phone}
-                      onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+                      onChange={handleClientFieldChange(setClientForm, 'phone')}
                       required
                     />
                   </label>
@@ -729,14 +804,14 @@ function App() {
                     Email
                     <input
                       value={clientForm.email}
-                      onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                      onChange={handleClientFieldChange(setClientForm, 'email')}
                     />
                   </label>
                   <label>
                     Notas
                     <textarea
                       value={clientForm.notes}
-                      onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+                      onChange={handleClientFieldChange(setClientForm, 'notes')}
                     />
                   </label>
                   <label>
@@ -888,7 +963,7 @@ function App() {
                     Descripción
                     <input
                       value={paymentForm.description}
-                      onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, description: uppercaseValue(e.target.value) })}
                     />
                   </label>
                   <label>
@@ -964,6 +1039,67 @@ function App() {
 
         {message && <div className="toast">{message}</div>}
       </main>
+
+      {isAgendaClientModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsAgendaClientModalOpen(false)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Nuevo cliente</h3>
+              <button
+                className="button secondary small"
+                type="button"
+                onClick={() => {
+                  setAgendaClientForm(createEmptyClientForm());
+                  setIsAgendaClientModalOpen(false);
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+            <form className="form" onSubmit={saveAgendaClient}>
+              <label>
+                Nombre
+                <input
+                  value={agendaClientForm.firstName}
+                  onChange={handleClientFieldChange(setAgendaClientForm, 'firstName')}
+                  required
+                />
+              </label>
+              <label>
+                Apellido
+                <input
+                  value={agendaClientForm.lastName}
+                  onChange={handleClientFieldChange(setAgendaClientForm, 'lastName')}
+                  required
+                />
+              </label>
+              <label>
+                Teléfono
+                <input
+                  value={agendaClientForm.phone}
+                  onChange={handleClientFieldChange(setAgendaClientForm, 'phone')}
+                  required
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  value={agendaClientForm.email}
+                  onChange={handleClientFieldChange(setAgendaClientForm, 'email')}
+                />
+              </label>
+              <label>
+                Notas
+                <textarea
+                  value={agendaClientForm.notes}
+                  onChange={handleClientFieldChange(setAgendaClientForm, 'notes')}
+                />
+              </label>
+              <button className="button primary" type="submit">Guardar cliente</button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -160,6 +160,39 @@ select {
   }
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 46, 31, 0.28);
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  width: min(100%, 520px);
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid #d7ead7;
+  background: #ffffff;
+  box-shadow: 0 20px 48px rgba(15, 46, 31, 0.18);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.modal-head h3 {
+  margin: 0;
+  color: #1f5a3f;
+}
+
 .content {
   flex: 1;
   padding: 20px 28px;
