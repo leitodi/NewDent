@@ -5,12 +5,7 @@ const paymentSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   amount: { type: Number, required: true },
   description: { type: String },
-  images: [
-    {
-      url: { type: String, required: true },
-      date: { type: Date, default: Date.now },
-    },
-  ],
+  images: { type: [mongoose.Schema.Types.Mixed], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 

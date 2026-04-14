@@ -6,12 +6,7 @@ const clientSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   email: { type: String },
   notes: { type: String },
-  images: [
-    {
-      url: { type: String, required: true },
-      date: { type: Date, default: Date.now },
-    },
-  ],
+  images: { type: [mongoose.Schema.Types.Mixed], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 

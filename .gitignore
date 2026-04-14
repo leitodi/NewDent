@@ -4,3 +4,5 @@ node_modules
 .DS_Store
 dist
 frontend/dist
+.codex-logs/
+backend/*.log

@@ -184,6 +184,25 @@ function App() {
     }
   };
 
+  const parseResponseData = async (response) => {
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      try {
+        return await response.json();
+      } catch {
+        return null;
+      }
+    }
+
+    try {
+      const text = await response.text();
+      return text ? { message: text } : null;
+    } catch {
+      return null;
+    }
+  };
+
   const updateClientList = (nextClient) => {
     setClients((prev) =>
       [...prev.filter((client) => client._id !== nextClient._id), nextClient].sort((a, b) => {
@@ -202,7 +221,7 @@ function App() {
       headers,
       body: JSON.stringify(payload),
     });
-    const data = await result.json();
+    const data = await parseResponseData(result);
     if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
 
     updateClientList(data);
@@ -212,7 +231,7 @@ function App() {
   const fetchClients = async ({ showLoading = true } = {}) => {
     const request = async () => {
       const result = await fetch(`${API_URL}/clients`, { headers });
-      const data = await result.json();
+      const data = await parseResponseData(result);
       setClients(data);
       return data;
     };
@@ -231,7 +250,7 @@ function App() {
 
     const request = async () => {
       const result = await fetch(`${API_URL}/appointments?date=${iso}`, { headers });
-      const data = await result.json();
+      const data = await parseResponseData(result);
       setAppointments(data);
       return data;
     };
@@ -251,7 +270,7 @@ function App() {
       if (end) params.set('end', end);
       const url = `${API_URL}/payments${params.toString() ? `?${params}` : ''}`;
       const result = await fetch(url, { headers });
-      const data = await result.json();
+      const data = await parseResponseData(result);
       setPaymentList(data);
       return data;
     };
@@ -285,7 +304,7 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(credentials),
         });
-        const data = await result.json();
+        const data = await parseResponseData(result);
         if (!result.ok) throw new Error(data.message || 'Error de login');
         setToken(data.token);
         sessionStorage.setItem('newDentToken', data.token);
@@ -385,7 +404,7 @@ function App() {
             notes: uppercaseValue(appointmentForm.notes),
           }),
         });
-        const data = await result.json();
+        const data = await parseResponseData(result);
         if (!result.ok) throw new Error(data.message || 'Error al guardar turno');
         setAppointmentForm({ ...appointmentForm, time: '', service: '', notes: '' });
         await fetchAppointments(new Date(appointmentForm.date), { showLoading: false });
@@ -409,7 +428,7 @@ function App() {
             description: uppercaseValue(paymentForm.description),
           }),
         });
-        const data = await result.json();
+        const data = await parseResponseData(result);
         if (!result.ok) throw new Error(data.message || 'Error al guardar pago');
         setPaymentForm({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
         await fetchPayments(paymentFilter.start, paymentFilter.end, { showLoading: false });
@@ -482,7 +501,7 @@ function App() {
             })),
           }),
         });
-        const data = await result.json();
+        const data = await parseResponseData(result);
         if (!result.ok) throw new Error(data.message || 'Error al guardar imágenes');
 
         setSelectedClient(data);
@@ -508,7 +527,7 @@ function App() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
-        const data = await response.json();
+        const data = await parseResponseData(response);
         setMessage(data.message || 'Error al exportar');
         return;
       }

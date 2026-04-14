@@ -3,15 +3,24 @@ const ExcelJS = require('exceljs');
 const Payment = require('../models/Payment');
 const Client = require('../models/Client');
 const auth = require('../middleware/auth');
+const normalizeImages = require('../utils/normalizeImages');
 
 const router = express.Router();
 router.use(auth);
 
+const formatPayment = (payment) => ({
+  ...(payment.toObject ? payment.toObject() : payment),
+  images: normalizeImages(payment.images),
+});
+
 router.post('/', async (req, res) => {
   try {
-    const payment = new Payment(req.body);
+    const payment = new Payment({
+      ...req.body,
+      images: normalizeImages(req.body.images),
+    });
     await payment.save();
-    res.status(201).json(payment);
+    res.status(201).json(formatPayment(payment));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -25,7 +34,7 @@ router.get('/', async (req, res) => {
       filter.date = { $gte: new Date(start), $lte: new Date(end) };
     }
     const payments = await Payment.find(filter).populate('client').sort({ date: 1 });
-    res.json(payments);
+    res.json(payments.map(formatPayment));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
