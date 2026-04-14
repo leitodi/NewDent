@@ -30,13 +30,9 @@ const modules = [
   { key: 'caja', label: 'Caja' },
 ];
 
-function ToothIcon() {
+function BrandLogo() {
   return (
-    <svg viewBox="0 0 64 64" className="tooth-icon" aria-hidden="true">
-      <path d="M32 6c-8 0-14 5-16 12-2 8 0 15 0 23 0 5 2 11 4 16 2 4 6 6 12 6s10-2 12-6c2-5 4-11 4-16 0-8 2-15 0-23-2-7-8-12-16-12z" fill="#fff" stroke="#1f5a3f" strokeWidth="3" />
-      <path d="M24 20c1-2 3-4 8-4s7 2 8 4" stroke="#1f5a3f" strokeWidth="2" fill="none" />
-      <path d="M24 28c1-1 3-2 8-2s7 1 8 2" stroke="#1f5a3f" strokeWidth="2" fill="none" />
-    </svg>
+    <img src="/newdent-logo.jpeg" alt="Logo New Dent" className="brand-logo" />
   );
 }
 
@@ -321,20 +317,19 @@ function App() {
       <div className="layout login-screen">
         <header className="header auth-header">
           <div className="brand auth-brand">
-            <ToothIcon />
+            <BrandLogo />
             <span>NEW DENT</span>
           </div>
-          <p>Agenda de turnos para clínica dental</p>
         </header>
         <main className="panel centered-panel">
           <h2>Iniciar sesión</h2>
           <form className="form" onSubmit={login}>
             <label>
-              Email
+              Usuario
               <input
                 value={credentials.email}
                 onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
-                type="email"
+                type="text"
                 required
               />
             </label>
@@ -360,7 +355,7 @@ function App() {
       <header className="topbar">
         <div className="brand-panel">
           <div className="brand-large">
-            <ToothIcon />
+            <BrandLogo />
             <span>NEW DENT</span>
           </div>
           <p className="brand-subtitle">Agenda, clientes y caja en un solo lugar</p>

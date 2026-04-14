@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const ensureAdminUser = require('./config/ensureAdminUser');
 const authRoutes = require('./routes/auth');
 const clientRoutes = require('./routes/clients');
 const appointmentRoutes = require('./routes/appointments');
@@ -40,6 +41,7 @@ const PORT = process.env.PORT || 4000;
 const startServer = async () => {
   try {
     await connectDB();
+    await ensureAdminUser();
     app.listen(PORT, () => {
       console.log(`Backend running on port ${PORT}`);
     });
