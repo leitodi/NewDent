@@ -1,7 +1,51 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import './styles.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const normalizeApiUrl = (value) => String(value || '').trim().replace(/\/$/, '');
+
+const deriveRenderApiUrl = () => {
+  if (typeof window === 'undefined') return '';
+
+  const { protocol, hostname } = window.location;
+  if (!hostname.endsWith('.onrender.com')) return '';
+
+  const [serviceName, ...rest] = hostname.split('.');
+  const apiServiceName = serviceName.endsWith('-api') ? serviceName : `${serviceName}-api`;
+
+  return `${protocol}//${apiServiceName}.${rest.join('.')}/api`;
+};
+
+const resolveApiUrl = () => {
+  const envApiUrl = normalizeApiUrl(import.meta.env.VITE_API_URL);
+
+  if (typeof window === 'undefined') {
+    return envApiUrl || 'http://localhost:4000/api';
+  }
+
+  const localApiUrl = 'http://localhost:4000/api';
+  const derivedRenderApiUrl = deriveRenderApiUrl();
+
+  if (!envApiUrl) {
+    return derivedRenderApiUrl || localApiUrl;
+  }
+
+  try {
+    const parsedUrl = new URL(envApiUrl);
+    if (
+      parsedUrl.hostname === window.location.hostname &&
+      parsedUrl.pathname.startsWith('/api') &&
+      derivedRenderApiUrl
+    ) {
+      return derivedRenderApiUrl;
+    }
+  } catch {
+    return envApiUrl;
+  }
+
+  return envApiUrl;
+};
+
+const API_URL = resolveApiUrl();
 const today = new Date();
 
 const buildDays = (monthDate) => {
@@ -203,6 +247,12 @@ function App() {
     }
   };
 
+  const getResponseMessage = (data, fallback) => {
+    if (!data) return fallback;
+    if (typeof data.message === 'string' && data.message.trim()) return data.message;
+    return fallback;
+  };
+
   const updateClientList = (nextClient) => {
     setClients((prev) =>
       [...prev.filter((client) => client._id !== nextClient._id), nextClient].sort((a, b) => {
@@ -222,7 +272,8 @@ function App() {
       body: JSON.stringify(payload),
     });
     const data = await parseResponseData(result);
-    if (!result.ok) throw new Error(data.message || 'Error al guardar cliente');
+    if (!result.ok) throw new Error(getResponseMessage(data, 'Error al guardar cliente'));
+    if (!data || typeof data !== 'object') throw new Error('Respuesta invalida del servidor');
 
     updateClientList(data);
     return data;
@@ -305,7 +356,8 @@ function App() {
           body: JSON.stringify(credentials),
         });
         const data = await parseResponseData(result);
-        if (!result.ok) throw new Error(data.message || 'Error de login');
+        if (!result.ok) throw new Error(getResponseMessage(data, 'Error de login'));
+        if (!data?.token) throw new Error(getResponseMessage(data, 'La API devolvio una respuesta vacia al iniciar sesion'));
         setToken(data.token);
         sessionStorage.setItem('newDentToken', data.token);
         localStorage.removeItem('newDentToken');
@@ -405,7 +457,7 @@ function App() {
           }),
         });
         const data = await parseResponseData(result);
-        if (!result.ok) throw new Error(data.message || 'Error al guardar turno');
+        if (!result.ok) throw new Error(getResponseMessage(data, 'Error al guardar turno'));
         setAppointmentForm({ ...appointmentForm, time: '', service: '', notes: '' });
         await fetchAppointments(new Date(appointmentForm.date), { showLoading: false });
         setMessage('Turno guardado');
@@ -429,7 +481,7 @@ function App() {
           }),
         });
         const data = await parseResponseData(result);
-        if (!result.ok) throw new Error(data.message || 'Error al guardar pago');
+        if (!result.ok) throw new Error(getResponseMessage(data, 'Error al guardar pago'));
         setPaymentForm({ client: '', date: today.toISOString().split('T')[0], amount: '', description: '', images: [] });
         await fetchPayments(paymentFilter.start, paymentFilter.end, { showLoading: false });
         setMessage('Pago guardado');
@@ -502,7 +554,8 @@ function App() {
           }),
         });
         const data = await parseResponseData(result);
-        if (!result.ok) throw new Error(data.message || 'Error al guardar imágenes');
+        if (!result.ok) throw new Error(getResponseMessage(data, 'Error al guardar imagenes'));
+        if (!data || typeof data !== 'object') throw new Error('Respuesta invalida del servidor');
 
         setSelectedClient(data);
         setClients((prev) => prev.map((client) => (client._id === data._id ? data : client)));
@@ -528,7 +581,7 @@ function App() {
       });
       if (!response.ok) {
         const data = await parseResponseData(response);
-        setMessage(data.message || 'Error al exportar');
+        setMessage(getResponseMessage(data, 'Error al exportar'));
         return;
       }
       const blob = await response.blob();

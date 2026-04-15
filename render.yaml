@@ -1,7 +1,7 @@
 services:
   - type: web
     runtime: node
-    name: new-dent-backend
+    name: newdent-api
     rootDir: backend
     plan: starter
     region: oregon
@@ -14,14 +14,14 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_ORIGIN
-        value: https://newdent.onrender.com,https://new-dent-frontend.onrender.com,http://localhost:5173
+        value: https://newdent.onrender.com,http://localhost:5173
 
   - type: web
     runtime: static
-    name: new-dent-frontend
+    name: newdent
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://new-dent-backend.onrender.com/api
+        value: https://newdent-api.onrender.com/api
