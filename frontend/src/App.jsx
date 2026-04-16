@@ -76,7 +76,7 @@ const modules = [
 
 function BrandLogo() {
   return (
-    <img src="/newdent-logo.jpeg" alt="Logo Odontologia Garibaldi" className="brand-logo" />
+    <img src="/newdent-logo.png" alt="Logo Odontologia Garibaldi" className="brand-logo" />
   );
 }
 
@@ -86,6 +86,28 @@ function WhatsAppIcon() {
       <path
         fill="currentColor"
         d="M12 2.2a9.8 9.8 0 0 0-8.34 14.95L2.2 21.8l4.78-1.43A9.8 9.8 0 1 0 12 2.2zm0 17.82a8.02 8.02 0 0 1-4.08-1.11l-.29-.17-2.84.85.85-2.76-.19-.29A8.02 8.02 0 1 1 12 20.02zm4.4-6.02c-.24-.12-1.4-.69-1.62-.77-.21-.08-.37-.12-.53.12-.16.24-.61.77-.75.93-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.22-.72-.64-1.2-1.44-1.34-1.68-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.53-1.28-.73-1.76-.19-.45-.38-.39-.53-.4h-.45c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.37.51.58.18 1.11.15 1.52.09.46-.07 1.4-.57 1.6-1.11.2-.55.2-1.02.14-1.11-.06-.09-.22-.14-.46-.26z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="trash-icon" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M9 3.75A2.25 2.25 0 0 0 6.75 6H4.5a.75.75 0 0 0 0 1.5h.56l.9 11.03A2.25 2.25 0 0 0 8.2 20.6h7.6a2.25 2.25 0 0 0 2.24-2.07l.9-11.03h.56a.75.75 0 0 0 0-1.5h-2.25A2.25 2.25 0 0 0 15 3.75H9zm0 1.5h6A.75.75 0 0 1 15.75 6h-7.5A.75.75 0 0 1 9 5.25zm.29 4.04a.75.75 0 0 0-1.5.12l.5 6.5a.75.75 0 1 0 1.5-.12l-.5-6.5zm5.42 0a.75.75 0 1 0-1.5-.12l-.5 6.5a.75.75 0 1 0 1.5.12l.5-6.5z"
+      />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="edit-icon" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M16.86 3.49a2.1 2.1 0 0 1 2.97 2.97l-9.4 9.4-3.73.76a.75.75 0 0 1-.88-.88l.76-3.73 9.4-9.4zm1.91 1.06a.6.6 0 0 0-.85 0l-1.16 1.16 1.81 1.82 1.16-1.17a.6.6 0 0 0 0-.85l-.96-.96zm-2.87 2.22-8.02 8.02-.43 2.12 2.12-.43 8.02-8.02-1.69-1.69z"
       />
     </svg>
   );
@@ -173,6 +195,16 @@ const normalizeClientPayload = (form) => ({
   images: form.images || [],
 });
 
+const compareClients = (a, b) => {
+  const deletedCompare = Number(Boolean(a.deletedAt)) - Number(Boolean(b.deletedAt));
+  if (deletedCompare !== 0) return deletedCompare;
+
+  const firstNameCompare = a.firstName.localeCompare(b.firstName);
+  if (firstNameCompare !== 0) return firstNameCompare;
+
+  return a.lastName.localeCompare(b.lastName);
+};
+
 function App() {
   const [token, setToken] = useState(sessionStorage.getItem('newDentToken') || '');
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -183,6 +215,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientForm, setClientForm] = useState(createEmptyClientForm());
+  const [editingClientId, setEditingClientId] = useState('');
   const [agendaClientForm, setAgendaClientForm] = useState(createEmptyClientForm());
   const [isAgendaClientModalOpen, setIsAgendaClientModalOpen] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ client: '', date: today.toISOString().split('T')[0], time: '', service: '', notes: '' });
@@ -197,6 +230,8 @@ function App() {
   const days = useMemo(() => buildDays(currentMonth), [currentMonth]);
   const monthName = currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
   const weekDays = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+  const sortedClients = useMemo(() => [...clients].sort(compareClients), [clients]);
+  const activeClients = useMemo(() => sortedClients.filter((client) => !client.deletedAt), [sortedClients]);
 
   const moveMonth = (delta) => {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
@@ -255,11 +290,7 @@ function App() {
 
   const updateClientList = (nextClient) => {
     setClients((prev) =>
-      [...prev.filter((client) => client._id !== nextClient._id), nextClient].sort((a, b) => {
-        const firstNameCompare = a.firstName.localeCompare(b.firstName);
-        if (firstNameCompare !== 0) return firstNameCompare;
-        return a.lastName.localeCompare(b.lastName);
-      })
+      [...prev.filter((client) => client._id !== nextClient._id), nextClient].sort(compareClients)
     );
   };
 
@@ -379,11 +410,32 @@ function App() {
 
   const saveClient = async (event) => {
     event.preventDefault();
-    await runWithLoading('Guardando cliente...', async () => {
+    const isEditingClient = Boolean(editingClientId);
+    await runWithLoading(isEditingClient ? 'Guardando cambios del paciente...' : 'Guardando paciente...', async () => {
       try {
-        await createClientRecord(clientForm);
+        if (isEditingClient) {
+          const payload = normalizeClientPayload(clientForm);
+          const result = await fetch(`${API_URL}/clients/${editingClientId}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(payload),
+          });
+          const data = await parseResponseData(result);
+          if (!result.ok) throw new Error(getResponseMessage(data, 'Error al guardar paciente'));
+          if (!data || typeof data !== 'object') throw new Error('Respuesta invalida del servidor');
+
+          updateClientList(data);
+          if (selectedClient?._id === data._id) {
+            setSelectedClient(data);
+          }
+          setMessage('Paciente actualizado');
+        } else {
+          await createClientRecord(clientForm);
+          setMessage('Paciente guardado');
+        }
+
         setClientForm(createEmptyClientForm());
-        setMessage('Cliente guardado');
+        setEditingClientId('');
       } catch (error) {
         setMessage(error.message);
       }
@@ -491,11 +543,66 @@ function App() {
     });
   };
 
+  const deleteClient = async (client) => {
+    if (!client?._id || client.deletedAt) return;
+
+    const confirmed = window.confirm(`Vas a dar de baja a ${client.firstName} ${client.lastName}.`);
+    if (!confirmed) return;
+
+    await runWithLoading('Dando de baja paciente...', async () => {
+      try {
+        const result = await fetch(`${API_URL}/clients/${client._id}`, {
+          method: 'DELETE',
+          headers,
+        });
+        const data = await parseResponseData(result);
+        if (!result.ok) throw new Error(getResponseMessage(data, 'Error al dar de baja paciente'));
+        if (!data || typeof data !== 'object') throw new Error('Respuesta invalida del servidor');
+
+        updateClientList(data);
+
+        if (selectedClient?._id === data._id) {
+          setSelectedClient(data);
+        }
+
+        if (editingClientId === data._id) {
+          setEditingClientId('');
+          setClientForm(createEmptyClientForm());
+        }
+
+        setAppointmentForm((prev) => (prev.client === data._id ? { ...prev, client: '' } : prev));
+        setPaymentForm((prev) => (prev.client === data._id ? { ...prev, client: '' } : prev));
+        setMessage(`Paciente dado de baja el ${formatDate(data.deletedAt)}`);
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
+  };
+
+  const startEditingClient = (client) => {
+    setEditingClientId(client._id);
+    setClientForm({
+      firstName: client.firstName || '',
+      lastName: client.lastName || '',
+      phone: client.phone || '',
+      email: client.email || '',
+      notes: client.notes || '',
+      images: client.images || [],
+    });
+    setMessage(`Editando paciente ${client.firstName} ${client.lastName}`);
+  };
+
+  const cancelEditingClient = () => {
+    setEditingClientId('');
+    setClientForm(createEmptyClientForm());
+    setMessage('Edición cancelada');
+  };
+
   const loadClientDetails = (client) => {
     setSelectedClient(client);
     setSelectedClientUpload({ date: getLocalDateValue(), images: [] });
-    setAppointmentForm((prev) => ({ ...prev, client: client._id }));
-    setPaymentForm((prev) => ({ ...prev, client: client._id }));
+    setAppointmentForm((prev) => ({ ...prev, client: client.deletedAt ? '' : client._id }));
+    setPaymentForm((prev) => ({ ...prev, client: client.deletedAt ? '' : client._id }));
   };
 
   const handleSelectedClientImages = async (event) => {
@@ -670,9 +777,9 @@ function App() {
           <div>
             <h1>{modules.find((mod) => mod.key === selectedModule)?.label}</h1>
           </div>
-          <div className="status-card">
+            <div className="status-card">
             <div className="status-item">
-              <span>{clients.length}</span>
+              <span>{activeClients.length}</span>
               <small>Pacientes</small>
             </div>
             <div className="status-item">
@@ -725,7 +832,7 @@ function App() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Cliente</th>
+                        <th>Paciente</th>
                         <th>Celular</th>
                         <th>Hora</th>
                         <th>Servicio</th>
@@ -783,7 +890,7 @@ function App() {
                         required
                       >
                         <option value="">Seleccionar paciente</option>
-                        {clients.map((client) => (
+                        {activeClients.map((client) => (
                           <option key={client._id} value={client._id}>
                             {client.firstName} {client.lastName}
                           </option>
@@ -846,7 +953,7 @@ function App() {
             </div>
             <div className="clients-content">
               <div className="form-section">
-                <h4>Nuevo paciente</h4>
+                <h4>{editingClientId ? 'Editar paciente' : 'Nuevo paciente'}</h4>
                 <form className="form" onSubmit={saveClient}>
                   <label>
                     Nombre
@@ -902,7 +1009,16 @@ function App() {
                       <p className="small-note">No hay imágenes cargadas aún</p>
                     )}
                   </div>
-                  <button className="button primary" type="submit">Guardar paciente</button>
+                  <div className="form-actions">
+                    <button className="button primary" type="submit">
+                      {editingClientId ? 'Guardar cambios' : 'Guardar paciente'}
+                    </button>
+                    {editingClientId && (
+                      <button className="button secondary" type="button" onClick={cancelEditingClient}>
+                        Cancelar edición
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
               <div className="clients-list-section">
@@ -914,17 +1030,44 @@ function App() {
                         <th>Nombre</th>
                         <th>Teléfono</th>
                         <th>Ver</th>
+                        <th>Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {clients.map((client) => (
-                        <tr key={client._id}>
+                      {sortedClients.map((client) => (
+                        <tr key={client._id} className={client.deletedAt ? 'client-row deleted' : 'client-row'}>
                           <td>{client.firstName} {client.lastName}</td>
                           <td>{client.phone}</td>
                           <td>
                             <button className="button small" type="button" onClick={() => loadClientDetails(client)}>
                               Abrir
                             </button>
+                          </td>
+                          <td className="table-action-cell">
+                            <div className="table-actions">
+                              <button
+                                className="icon-button"
+                                type="button"
+                                onClick={() => startEditingClient(client)}
+                                title={`Editar a ${client.firstName} ${client.lastName}`}
+                                aria-label={`Editar a ${client.firstName} ${client.lastName}`}
+                              >
+                                <EditIcon />
+                              </button>
+                              {client.deletedAt ? (
+                                <span className="deleted-at-badge">{formatDate(client.deletedAt)}</span>
+                              ) : (
+                                <button
+                                  className="icon-button danger"
+                                  type="button"
+                                  onClick={() => deleteClient(client)}
+                                  title={`Dar de baja a ${client.firstName} ${client.lastName}`}
+                                  aria-label={`Dar de baja a ${client.firstName} ${client.lastName}`}
+                                >
+                                  <TrashIcon />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -938,6 +1081,7 @@ function App() {
                   <p><strong>Teléfono:</strong> {selectedClient.phone}</p>
                   <p><strong>Email:</strong> {selectedClient.email || 'No registrado'}</p>
                   <p><strong>Notas:</strong> {selectedClient.notes || 'Sin notas'}</p>
+                  {selectedClient.deletedAt && <p><strong>Fecha de baja:</strong> {formatDate(selectedClient.deletedAt)}</p>}
                   <div className="client-upload-panel">
                     <h5>Agregar imágenes</h5>
                     <form className="form" onSubmit={saveSelectedClientImages}>
@@ -1006,7 +1150,7 @@ function App() {
                       required
                     >
                       <option value="">Seleccionar paciente</option>
-                      {clients.map((client) => (
+                      {activeClients.map((client) => (
                         <option key={client._id} value={client._id}>
                           {client.firstName} {client.lastName}
                         </option>
@@ -1084,7 +1228,7 @@ function App() {
                       <thead>
                         <tr>
                           <th>Fecha</th>
-                          <th>Cliente</th>
+                          <th>Paciente</th>
                           <th>Monto</th>
                           <th>Imágenes</th>
                         </tr>

@@ -7,6 +7,7 @@ const clientSchema = new mongoose.Schema({
   email: { type: String },
   notes: { type: String },
   images: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 

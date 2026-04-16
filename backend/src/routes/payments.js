@@ -55,7 +55,7 @@ router.get('/export', async (req, res) => {
 
     sheet.columns = [
       { header: 'Fecha', key: 'date', width: 18 },
-      { header: 'Cliente', key: 'client', width: 30 },
+      { header: 'Paciente', key: 'client', width: 30 },
       { header: 'Monto', key: 'amount', width: 14 },
       { header: 'Descripción', key: 'description', width: 30 },
     ];
@@ -64,7 +64,7 @@ router.get('/export', async (req, res) => {
     payments.forEach((payment) => {
       sheet.addRow({
         date: payment.date.toLocaleDateString('es-AR'),
-        client: payment.client ? `${payment.client.firstName} ${payment.client.lastName}` : 'Sin cliente',
+        client: payment.client ? `${payment.client.firstName} ${payment.client.lastName}` : 'Sin paciente',
         amount: payment.amount,
         description: payment.description || '',
       });

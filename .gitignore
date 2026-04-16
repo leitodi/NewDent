@@ -6,3 +6,4 @@ dist
 frontend/dist
 .codex-logs/
 backend/*.log
+frontend/*.log

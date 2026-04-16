@@ -390,8 +390,24 @@ th, td {
 }
 
 .table-action-cell {
-  width: 84px;
+  width: 180px;
   text-align: center;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.client-row.deleted {
+  background: #fff1f1;
+  color: #9d2b2b;
+}
+
+.client-row.deleted td {
+  border-bottom-color: #f1cccc;
 }
 
 .table-scroll {
@@ -431,8 +447,68 @@ th, td {
   height: 18px;
 }
 
+.trash-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.edit-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1f5a3f;
+  box-shadow: 0 4px 12px rgba(15, 46, 31, 0.12);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.icon-button:hover {
+  transform: translateY(-1px);
+  background: #eef7f0;
+}
+
+.icon-button.danger {
+  background: #d33c40;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(211, 60, 64, 0.24);
+}
+
+.icon-button.danger:hover {
+  background: #bf2f33;
+  box-shadow: 0 8px 18px rgba(191, 47, 51, 0.3);
+}
+
+.deleted-at-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 98px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #f8dede;
+  color: #9d2b2b;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .form {
   display: grid;
+  gap: 10px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -488,6 +564,8 @@ textarea {
 .clients-content {
   display: grid;
   gap: 24px;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  align-items: start;
 }
 
 .caja-content {
@@ -496,6 +574,7 @@ textarea {
 }
 
 .client-card-large {
+  grid-column: 1 / -1;
   padding: 20px;
   border: 1px solid #d8ebd8;
   border-radius: 18px;
@@ -602,6 +681,9 @@ textarea {
     padding: 20px;
   }
   .agenda-content {
+    grid-template-columns: 1fr;
+  }
+  .clients-content {
     grid-template-columns: 1fr;
   }
   .top-controls {
